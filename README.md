@@ -1,6 +1,6 @@
 # EngineSense
 
-[![CI](https://github.com/YOUR-USERNAME/EngineSense/actions/workflows/ci.yml/badge.svg)](https://github.com/YOUR-USERNAME/EngineSense/actions/workflows/ci.yml)
+[![CI](https://github.com/idriskhansys/EngineSense/actions/workflows/ci.yml/badge.svg)](https://github.com/idriskhansys/EngineSense/actions/workflows/ci.yml)
 ![C++17](https://img.shields.io/badge/C%2B%2B-17-blue) ![License](https://img.shields.io/badge/license-MIT-green)
 
 **J1939 engine diagnostics and reliability analyzer** for Windows, Android and iOS, built around a portable
