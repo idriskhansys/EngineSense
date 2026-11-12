@@ -1,0 +1,4 @@
+add_executable(enginesense_bench main.cpp)
+target_link_libraries(enginesense_bench PRIVATE enginesense_core)
+enginesense_set_warnings(enginesense_bench)
+enginesense_enable_tidy(enginesense_bench)

@@ -1,0 +1,163 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # Verifies: REQ-ARCH-001, REQ-QUAL-001
+  build-test:
+    name: build + test (${{ matrix.name }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { name: linux-gcc,   os: ubuntu-24.04, cc: gcc,   cxx: g++,     werror: "ON" }
+          - { name: linux-clang, os: ubuntu-24.04, cc: clang, cxx: clang++, werror: "ON" }
+          - { name: windows-msvc, os: windows-2022, werror: "OFF" }
+          - { name: macos-clang, os: macos-14,     werror: "ON" }
+    steps:
+      - uses: actions/checkout@v4
+      - name: Configure
+        shell: bash
+        run: |
+          if [ -n "${{ matrix.cc }}" ]; then export CC=${{ matrix.cc }} CXX=${{ matrix.cxx }}; fi
+          cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DENGINESENSE_WERROR=${{ matrix.werror }}
+      - name: Build
+        run: cmake --build build --config Release --parallel
+      - name: Test
+        run: ctest --test-dir build -C Release --output-on-failure --parallel 4
+
+  # Verifies: REQ-QUAL-001, REQ-ROB-001
+  sanitizers:
+    name: ASan + UBSan (Debug)
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Debug -DENGINESENSE_SANITIZER=address -DENGINESENSE_WERROR=ON
+      - run: cmake --build build --parallel
+      - run: ctest --test-dir build --output-on-failure --parallel 4
+
+  # Verifies: REQ-QUAL-001, REQ-PERF-002
+  thread-sanitizer:
+    name: TSan (threaded pipeline)
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      # TSan needs a lower ASLR entropy on recent kernels
+      - run: sudo sysctl vm.mmap_rnd_bits=28
+      - run: cmake -S . -B build -DCMAKE_BUILD_TYPE=RelWithDebInfo -DENGINESENSE_SANITIZER=thread
+      - run: cmake --build build --parallel
+      - run: ctest --test-dir build -R "Monitor|CApi" --output-on-failure
+
+  # Verifies: REQ-QUAL-001
+  static-analysis:
+    name: clang-tidy + cppcheck
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - run: sudo apt-get update && sudo apt-get install -y clang-tidy cppcheck
+      - name: clang-tidy (warnings are errors)
+        run: |
+          cmake -S . -B build-tidy -G "Unix Makefiles" -DENGINESENSE_CLANG_TIDY=ON -DENGINESENSE_BUILD_TESTS=OFF
+          cmake --build build-tidy --parallel
+      - name: cppcheck
+        run: cppcheck --std=c++17 --enable=warning,performance,portability --inline-suppr --error-exitcode=1 --suppress=missingIncludeSystem -I core/include core/src apps/cli apps/bench
+
+  # Verifies: REQ-QUAL-001
+  traceability-and-analysis:
+    name: traceability, FMEA, statistics
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - run: pip install numpy matplotlib
+      - name: Requirements are all covered and documents are up to date
+        run: |
+          python3 tools/trace.py --check
+          python3 tools/fmea.py --check
+          python3 tools/check_core_deps.py
+      - name: Benchmark + analysis smoke run
+        run: |
+          cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DENGINESENSE_BUILD_TESTS=OFF
+          cmake --build build --parallel
+          mkdir -p out
+          ./build/apps/bench/enginesense_bench latency --trials 20 --out out
+          ./build/apps/bench/enginesense_bench nominal --runs 5 --minutes 5 --out out
+          ./build/apps/bench/enginesense_bench throughput
+          cp docs/data/sweep_*.csv out/
+          python3 tools/analyze.py --data out --figures out/figures --results out/results.md
+      - uses: actions/upload-artifact@v4
+        with: { name: analysis-smoke, path: out }
+
+  desktop-linux:
+    name: Qt 6 desktop (Linux, offscreen smoke test)
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - run: sudo apt-get update && sudo apt-get install -y qt6-base-dev libgl1-mesa-dev
+      - run: cmake -S . -B build -DENGINESENSE_BUILD_DESKTOP=ON -DENGINESENSE_BUILD_TESTS=OFF -DENGINESENSE_WERROR=ON
+      - run: cmake --build build --parallel
+      - run: QT_QPA_PLATFORM=offscreen ./build/apps/desktop/enginesense_desktop --smoke-test
+
+  desktop-windows:
+    name: Qt 6 desktop (Windows)
+    runs-on: windows-2022
+    steps:
+      - uses: actions/checkout@v4
+      - uses: jurplel/install-qt-action@v4
+        with:
+          version: 6.7.2
+          arch: win64_msvc2019_64
+          cache: true
+      - run: cmake -S . -B build -DENGINESENSE_BUILD_DESKTOP=ON -DENGINESENSE_BUILD_TESTS=OFF
+      - run: cmake --build build --config Release --parallel
+      - name: Bundle with windeployqt
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force dist | Out-Null
+          Copy-Item build/apps/desktop/Release/enginesense_desktop.exe dist/
+          windeployqt --release --no-translations dist/enginesense_desktop.exe
+      - uses: actions/upload-artifact@v4
+        with: { name: EngineSense-windows, path: dist }
+
+  # Verifies: REQ-ARCH-002
+  android:
+    name: Android NDK + JNI
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Real JNI bridge driven from a desktop JVM
+        run: sh platform/android/host-test/run.sh
+      - name: Build native library with the NDK (arm64-v8a, x86_64)
+        run: |
+          for abi in arm64-v8a x86_64; do
+            cmake -S platform/android/app/src/main/cpp -B build-android-$abi -G Ninja \
+              -DCMAKE_TOOLCHAIN_FILE=$ANDROID_NDK_LATEST_HOME/build/cmake/android.toolchain.cmake \
+              -DANDROID_ABI=$abi -DANDROID_PLATFORM=android-26 -DCMAKE_BUILD_TYPE=Release
+            cmake --build build-android-$abi
+          done
+      - uses: actions/setup-java@v4
+        with: { distribution: temurin, java-version: 17 }
+      - uses: gradle/actions/setup-gradle@v4
+        with: { gradle-version: "8.9" }
+      - name: Assemble the debug APK
+        working-directory: platform/android
+        run: gradle --no-daemon :app:assembleDebug
+
+  # Verifies: REQ-ARCH-002
+  ios:
+    name: iOS (Objective-C++ wrapper, simulator)
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+      - run: |
+          cmake -S platform/ios -B build-ios -G Xcode -DCMAKE_SYSTEM_NAME=iOS \
+            -DCMAKE_OSX_SYSROOT=iphonesimulator -DCMAKE_OSX_ARCHITECTURES=arm64 \
+            -DCMAKE_XCODE_ATTRIBUTE_CODE_SIGNING_ALLOWED=NO
+      - run: cmake --build build-ios --config Debug

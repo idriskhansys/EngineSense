@@ -1,0 +1,21 @@
+# Common warning / sanitizer helpers shared by every target in the project.
+function(enginesense_set_warnings target)
+  if(MSVC)
+    target_compile_options(${target} PRIVATE /W4 /permissive-)
+    if(ENGINESENSE_WERROR)
+      target_compile_options(${target} PRIVATE /WX)
+    endif()
+  else()
+    target_compile_options(${target} PRIVATE -Wall -Wextra -Wpedantic -Wshadow -Wconversion -Wnon-virtual-dtor)
+    if(ENGINESENSE_WERROR)
+      target_compile_options(${target} PRIVATE -Werror)
+    endif()
+  endif()
+endfunction()
+
+# clang-tidy is applied to production code only (core + apps), not to the GoogleTest sources.
+function(enginesense_enable_tidy target)
+  if(ENGINESENSE_CLANG_TIDY AND CLANG_TIDY_EXE)
+    set_target_properties(${target} PROPERTIES CXX_CLANG_TIDY "${CLANG_TIDY_EXE};--warnings-as-errors=*")
+  endif()
+endfunction()

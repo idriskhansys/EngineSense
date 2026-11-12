@@ -1,0 +1,6 @@
+id,kind,type,severity,key,signal,raised_us,cleared_us,value,message
+1,raised,ImplausibleRate,warning,rate.110,Coolant temp,8078111,0,30.213,"Coolant temp changed at 30.2 degC/s (limit 5.0 degC/s)"
+2,raised,OverTemperature,critical,over_temp.coolant,Coolant temp,9082116,0,115.000,"Coolant temp 115.0 degC above limit 105.0 degC"
+1,cleared,ImplausibleRate,warning,rate.110,Coolant temp,8078111,10078847,30.213,"Coolant temp changed at 30.2 degC/s (limit 5.0 degC/s)"
+3,raised,EcuDtc,warning,dtc.110.0,Coolant temp,14680393,0,0.000,"ECU DTC SPN 110 FMI 0: data valid but above normal operational range (most severe)"
+4,raised,SensorDropout,critical,stale.ET1,,22035453,0,3005.007,"PGN 0xFEEE (ET1) not received for 3005 ms"

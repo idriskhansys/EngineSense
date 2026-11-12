@@ -1,0 +1,14 @@
+build*/
+out/
+.cache/
+.vscode/
+.idea/
+*.o
+*.so
+*.dylib
+*.class
+__pycache__/
+compile_commands.json
+platform/android/.gradle/
+platform/android/**/build/
+platform/android/local.properties

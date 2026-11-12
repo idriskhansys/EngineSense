@@ -1,0 +1,20 @@
+---
+Checks: >
+  -*,
+  bugprone-*,
+  -bugprone-easily-swappable-parameters,
+  -bugprone-narrowing-conversions,
+  clang-analyzer-*,
+  performance-*,
+  modernize-use-nullptr,
+  modernize-use-override,
+  modernize-loop-convert,
+  modernize-make-unique,
+  modernize-use-emplace,
+  readability-container-size-empty,
+  readability-redundant-smartptr-get,
+  readability-misleading-indentation,
+  misc-unused-using-decls,
+  misc-misplaced-const
+HeaderFilterRegex: 'core/include/.*'
+WarningsAsErrors: ''

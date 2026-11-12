@@ -1,0 +1,4 @@
+add_executable(enginesense_cli main.cpp)
+target_link_libraries(enginesense_cli PRIVATE enginesense_core)
+enginesense_set_warnings(enginesense_cli)
+enginesense_enable_tidy(enginesense_cli)
