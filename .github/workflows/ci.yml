@@ -21,7 +21,7 @@ jobs:
           - { name: linux-gcc,   os: ubuntu-24.04, cc: gcc,   cxx: g++,     werror: "ON" }
           - { name: linux-clang, os: ubuntu-24.04, cc: clang, cxx: clang++, werror: "ON" }
           - { name: windows-msvc, os: windows-2022, werror: "OFF" }
-          - { name: macos-clang, os: macos-14,     werror: "ON" }
+          - { name: macos-clang, os: macos-15,     werror: "ON" }
     steps:
       - uses: actions/checkout@v4
       - name: Configure
@@ -153,7 +153,7 @@ jobs:
   # Verifies: REQ-ARCH-002
   ios:
     name: iOS (Objective-C++ wrapper, simulator)
-    runs-on: macos-14
+    runs-on: macos-15
     steps:
       - uses: actions/checkout@v4
       - run: |
