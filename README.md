@@ -79,7 +79,7 @@ docs/        requirements, traceability, FMEA, results, reports
 
 ## Platform notes
 - **Android:** `platform/android` (Gradle + NDK). `host-test/run.sh` runs the real JNI layer on a desktop JVM.
-- **iOS:** `platform/ios` (CMake Xcode generator); built on macOS CI. Not compiled in the authoring environment.
+- **iOS:** `platform/ios` (CMake Xcode generator); its CI build runs on demand (Actions > CI > Run workflow). Not yet verified on a real build.
 
 ## Limitations
 Simulated data only; TP.BAM multi-frame DM1 unsupported; rate-of-change rules are noise-sensitive at >= 4x

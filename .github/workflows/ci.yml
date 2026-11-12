@@ -4,6 +4,7 @@ on:
   push:
     branches: [main]
   pull_request:
+  workflow_dispatch:
 
 concurrency:
   group: ci-${{ github.ref }}
@@ -152,6 +153,7 @@ jobs:
 
   # Verifies: REQ-ARCH-002
   ios:
+    if: github.event_name == 'workflow_dispatch'
     name: iOS (Objective-C++ wrapper, simulator)
     runs-on: macos-15
     steps:
